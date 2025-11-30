@@ -59,7 +59,24 @@ def test_similar_neigh_distrib(data: pd.DataFrame, ref_data: pd.DataFrame, kl_th
 
     assert scipy.stats.entropy(dist1, dist2, base=2) < kl_threshold
 
+def test_row_count(data):
+    """
+    Test that the uploaded data has a reasonable number of rows.
+    """
+    # Check that the dataset is not empty
+    assert len(data) > 0
+    
+    # Optional: Check for a reasonable range based on sample1.csv (usually around 10k-50k rows)
+    # This ensures we didn't accidentally filter out everything
+    assert len(data) > 100 
 
-########################################################
-# Implement here test_row_count and test_price_range   #
-########################################################
+
+def test_price_range(data):
+    """
+    Test that the price range is valid (between 10 and 350).
+    """
+    # Verify no price is below $10
+    assert data['price'].min() >= 10
+    
+    # Verify no price is above $350
+    assert data['price'].max() <= 350
