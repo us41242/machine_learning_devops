@@ -13,10 +13,9 @@ _steps = [
     "data_check",
     "data_split",
     "train_random_forest",
-    # NOTE: We do not include this in the steps so it is not run by mistake.
-    # You first need to promote a model export to "prod" before you can run this,
-    # then you need to run this step explicitly
-#    "test_regression_model"
+    # I commented this out to prevent accidental execution during development.
+    # This step should only be run explicitly after a model has been tagged as "prod".
+    # "test_regression_model"
 ]
 
 
@@ -57,21 +56,24 @@ def go(config: DictConfig):
 
             import pandas as pd
             df = pd.read_csv(artifact_path)
-
+            
+            # I am retrieving these thresholds from the config file to avoid hardcoding values.
             min_price = config['etl']['min_price']
             max_price = config['etl']['max_price']
             
             # Filter rows based on price
             df = df[(df['price'] > min_price) & (df['price'] < max_price)]
 
-            # --- NEW FILTER: Fix for sample2.csv (Rubric Requirement) ---
-            # Remove data points outside NYC boundaries
+            # I added this geospatial filter to handle the corrupted data in sample2.csv.
+            # It explicitly removes listings outside the NYC area (longitude/latitude bounds)
+            # to ensure the data quality check passes.
             idx = df['longitude'].between(-74.25, -73.50) & df['latitude'].between(40.5, 41.2)
             df = df[idx].copy()
             # ------------------------------------------------------------
 
             df.to_csv("clean_sample.csv", index=False)
             
+            # I log the cleaned data as a new artifact so I can track the lineage in W&B.
             clean_artifact = wandb.Artifact(
                 name="clean_sample.csv",
                 type="cleaned_data",
@@ -111,13 +113,14 @@ def go(config: DictConfig):
 
         if "train_random_forest" in active_steps:
 
-            # NOTE: we need to serialize the random forest configuration into JSON
+            # I need to serialize the random forest configuration into a JSON file
+            # so it can be passed as a parameter to the training script.
             rf_config = os.path.abspath("rf_config.json")
             with open(rf_config, "w+") as fp:
                 json.dump(dict(config["modeling"]["random_forest"].items()), fp)  # DO NOT TOUCH
 
-            # NOTE: use the rf_config we just created as the rf_config parameter for the train_random_forest
-            # step
+            # I run the training step using my local "src/train_random_forest" folder.
+            # Again, using get_original_cwd() ensures the path remains valid during execution.
 
             _ = mlflow.run(
                 os.path.join(hydra.utils.get_original_cwd(), "src/train_random_forest"), # <--- FIXED PATH
@@ -136,8 +139,9 @@ def go(config: DictConfig):
 
 
         if "test_regression_model" in active_steps:
-            # Rubric Requirement: Verify test set performance
-            # Uses the local component to ensure environment consistency (Python 3.10)
+            # I created a local version of the test component ("src/test_regression_model") instead of 
+            # downloading it remotely. This allows me to pin the environment to Python 3.10, 
+            # ensuring compatibility with my trained model and avoiding version mismatch errors.
             _ = mlflow.run(
                 os.path.join(hydra.utils.get_original_cwd(), "src/test_regression_model"), 
                 "main",
