@@ -82,10 +82,16 @@ def go(config: DictConfig):
         if "data_check" in active_steps:
             # Run the data check component
             _ = mlflow.run(
-                # FIX: Use absolute path so MLflow finds the folder regardless of Hydra's working dir
                 os.path.join(hydra.utils.get_original_cwd(), "src/data_check"),
                 "main",
                 env_manager="conda",
+                parameters={
+                    "csv": "clean_sample.csv:latest",
+                    "ref": "clean_sample.csv:reference",
+                    "kl_threshold": config["data_check"]["kl_threshold"],
+                    "min_price": config["etl"]["min_price"],
+                    "max_price": config["etl"]["max_price"],
+                },
             )
 
         if "data_split" in active_steps:
