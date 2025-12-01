@@ -52,22 +52,24 @@ def go(config: DictConfig):
 
         if "basic_cleaning" in active_steps:
             run = wandb.init(job_type="basic_cleaning")
-            # 1. Download the artifact (raw data)
             artifact = run.use_artifact("sample.csv:latest")
             artifact_path = artifact.file()
 
-            # 2. Load data
             import pandas as pd
             df = pd.read_csv(artifact_path)
 
-            # 3. Clean data using Config (Rubric Requirement)
             min_price = config['etl']['min_price']
             max_price = config['etl']['max_price']
             
             # Filter rows based on price
             df = df[(df['price'] > min_price) & (df['price'] < max_price)]
 
-            # 4. Save and Upload Clean Data
+            # --- NEW FILTER: Fix for sample2.csv (Rubric Requirement) ---
+            # Remove data points outside NYC boundaries
+            idx = df['longitude'].between(-74.25, -73.50) & df['latitude'].between(40.5, 41.2)
+            df = df[idx].copy()
+            # ------------------------------------------------------------
+
             df.to_csv("clean_sample.csv", index=False)
             
             clean_artifact = wandb.Artifact(
