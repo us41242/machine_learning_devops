@@ -131,7 +131,7 @@ def go(config: DictConfig):
             _ = mlflow.run(
                 f"{config['main']['components_repository']}/test_regression_model",
                 "main",
-                env_manager="conda",
+                env_manager="local",
                 parameters={
                     "mlflow_model": "model_export:prod",     # Checks the model tagged "prod"
                     "test_dataset": "test_data.csv:latest"   # Checks against the test split
